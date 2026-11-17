@@ -1,0 +1,47 @@
+name: mobile_hunter
+description: "Mobile Hunter - consent-based real-time location sharing for families and friends."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.5
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # UI
+  cupertino_icons: ^1.0.8
+  intl: ^0.20.3
+
+  # State management
+  flutter_riverpod: ^3.5.0
+
+  # Firebase (Auth + realtime Firestore)
+  firebase_core: ^5.2.0
+  firebase_auth: ^7.1.0
+  cloud_firestore: ^7.2.0
+
+  # Google sign-in (Gmail)
+  google_sign_in: ^7.2.0
+
+  # OpenStreetMap rendering (free, no credit card)
+  flutter_map: ^8.3.2
+  latlong2: ^0.10.1
+
+  # Reverse geocoding (coordinates -> street address)
+  geocoding: ^5.0.1
+
+  # Device hardware
+  geolocator: ^14.1.2
+  flutter_background_service: ^5.1.0
+  battery_plus: ^7.1.2
+  permission_handler: ^13.0.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

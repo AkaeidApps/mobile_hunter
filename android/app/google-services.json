@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "209985052796",
+    "project_id": "mobile-hunter-akaid",
+    "storage_bucket": "mobile-hunter-akaid.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:209985052796:android:a96342becdfc3b992c29f9",
+        "android_client_info": {
+          "package_name": "com.example.mobile_hunter"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAzUFCuMN-6qk5pJdnxiR3KCwqG2iXE7mo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,135 @@
+rules_version = '2';
+
+// Mobile Hunter - Firestore security rules
+//
+// Design notes:
+//  * Every authenticated user may read the `users` collection because the
+//    "add connection" flow searches profiles by exact email/phone. Fields are
+//    deliberately limited to display data (name, email, phone, photo, live
+//    location) and never contain credentials.
+//  * A user document can only be written by its owner.
+//  * Connection documents are always created by the sender as `pending`.
+//    Only the receiver can flip a request to `accepted`; either participant may
+//    delete a document (reject / cancel / remove connection).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isValidUserProfile(data) {
+      let email = data.get('email', '');
+      let phone = data.get('phone', '');
+      let photoUrl = data.get('photoUrl', '');
+
+      return data.keys().hasAll([
+          'uid', 'name', 'email', 'phone', 'photoUrl', 'isSharing',
+          'latitude', 'longitude', 'speed', 'batteryLevel', 'lastUpdated'
+        ])
+        && data.uid is string
+        && data.uid == request.auth.uid
+        && data.name is string
+        && data.name.size() >= 1
+        && data.name.size() <= 80
+        && email is string
+        && email.size() <= 254
+        && phone is string
+        && phone.size() <= 32
+        && photoUrl is string
+        && photoUrl.size() <= 2048
+        && data.isSharing is bool
+        && data.latitude is number
+        && data.latitude >= -90.0
+        && data.latitude <= 90.0
+        && data.longitude is number
+        && data.longitude >= -180.0
+        && data.longitude <= 180.0
+        && data.speed is number
+        && data.speed >= 0.0
+        && data.speed <= 1000.0
+        && data.batteryLevel is int
+        && data.batteryLevel >= 0
+        && data.batteryLevel <= 100
+        && data.lastUpdated is timestamp;
+    }
+
+    function isValidNewConnection(connectionId) {
+      let data = request.resource.data;
+
+      return isSignedIn()
+        && data.keys().hasAll([
+            'id', 'senderId', 'senderName', 'senderContact', 'receiverId',
+            'receiverName', 'receiverContact', 'status', 'createdAt'
+          ])
+        && data.id is string
+        && data.id == connectionId
+        && data.senderId is string
+        && data.senderId == request.auth.uid
+        && data.receiverId is string
+        && data.receiverId != request.auth.uid
+        && data.senderName is string
+        && data.senderName.size() >= 1
+        && data.senderName.size() <= 80
+        && data.receiverName is string
+        && data.receiverName.size() >= 1
+        && data.receiverName.size() <= 80
+        && data.senderContact is string
+        && data.senderContact.size() <= 254
+        && data.receiverContact is string
+        && data.receiverContact.size() <= 254
+        && data.status == 'pending'
+        && data.createdAt is timestamp
+        // The receiver must be a real, registered user.
+        && exists(/databases/$(database)/documents/users/$(data.receiverId))
+        // The embedded sender name must match the authenticated profile.
+        && data.senderName ==
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.name;
+    }
+
+    match /users/{uid} {
+      // Required for profile search by exact email/phone during invitation.
+      allow read: if isSignedIn();
+
+      allow create: if isSelf(uid) && isValidUserProfile(request.resource.data);
+
+      allow update: if isSelf(uid)
+        && isValidUserProfile(request.resource.data)
+        && request.resource.data.uid == resource.data.uid;
+
+      allow delete: if isSelf(uid);
+    }
+
+    match /connections/{connectionId} {
+      function isParticipant() {
+        return isSignedIn()
+          && (resource.data.senderId == request.auth.uid
+            || resource.data.receiverId == request.auth.uid);
+      }
+
+      allow read: if isParticipant();
+
+      allow create: if isValidNewConnection(connectionId);
+
+      // The receiver accepts a pending request. No other field may change.
+      allow update: if isSignedIn()
+        && resource.data.receiverId == request.auth.uid
+        && resource.data.status == 'pending'
+        && request.resource.data.status == 'accepted'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+
+      // Sender cancels a pending request, receiver rejects it, or either side
+      // removes an accepted connection.
+      allow delete: if isParticipant();
+    }
+
+    // Everything else is denied by default.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
